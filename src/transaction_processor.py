@@ -102,7 +102,7 @@ class TransactionProcessor:
     #Methode calcul_stat_data pour une analyse detaillé
     def calcul_stat_data(self) ->dict:
         """
-        -Produit (Description) ayant rapporté le plus de gain en France 
+        -Produit (StockCode) ayant rapporté le plus de gain en France 
         -Tranche horaire avec le plus grand volume de transaction.
 
         Returns:
@@ -127,6 +127,7 @@ class TransactionProcessor:
             .sum()
             .reset_index()
             .sort_values("TotalAmount", ascending=False)
+            .reset_index(drop=True)
         )
         
         top_produit = top_france.iloc[0]
@@ -146,7 +147,7 @@ class TransactionProcessor:
         # Nombre de transactions (invoices distincts) par tranche horaire
         peak_hour_df = (
             df_hours.groupby("Hour")["InvoiceNo"]
-            .nunique()
+            .nunique()  #compte le nbre de facture unique
             .reset_index()
             .rename(columns={"InvoiceNo": "NbTransactions"})
             .sort_values("NbTransactions", ascending=False)

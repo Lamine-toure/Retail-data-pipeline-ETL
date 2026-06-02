@@ -44,7 +44,7 @@ def main():
     
     logger.info("============= Projet ETL ==============")
     
-    #instanciation er exécution du pipeline
+    #instanciation et exécution du pipeline
     pipeline = ETLPipeline(
         retail_path=RETAIL_PATH,
         supplier_path=SUPPLIER_PATH,

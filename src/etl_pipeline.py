@@ -142,7 +142,7 @@ class ETLPipeline:
         Parameters
         ----------
         path : str
-            Chemin complet du fichier de sortie 
+            Chemin complet du fichier de sortie
         """
         if self.df is None or self.df.empty:
             logger.error("Aucune donnée à sauvegarder. Exécutez run_pipeline() d'abord.")

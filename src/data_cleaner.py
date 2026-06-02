@@ -78,6 +78,7 @@ class DataCleaner:
         logger.info(
             "Après filtration on a %d lignes ", nb_after
         )
+        return self
 
     #retour du dataframe nettoyé
     def clean_df(self) -> "DataCleaner":
