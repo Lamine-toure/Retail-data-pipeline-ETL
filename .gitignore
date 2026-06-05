@@ -1,18 +1,9 @@
-# Environnement virtuel
-.venv/
-venv/
-env/
-
-# Fichiers Jupyter inutiles
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/
-
-# Dossiers générés par Jupyter
-*_files/
-
-# Logs
-*.log
-
-
-# Sorties
+__pycache__/
+*.pyc
+*.pyo
 output/
+logs/
+reports/
+*.parquet
+.env
+.DS_Store

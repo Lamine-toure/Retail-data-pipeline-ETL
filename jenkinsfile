@@ -1,0 +1,194 @@
+pipeline {
+
+    agent {
+        docker {
+            image 'online-retail-etl:latest'
+            args  '-v /var/run/docker.sock:/var/run/docker.sock'
+            reuseNode true
+        }
+    }
+
+    // Variables d'environnement globales
+    environment {
+        IMAGE_NAME    = 'online-retail-etl'
+        IMAGE_TAG     = "build-${env.BUILD_NUMBER}"
+
+        // Chemin de sortie du fichier Parquet généré par le pipeline ETL
+        PARQUET_OUTPUT = 'output/retail_clean.parquet'
+
+        // Désactive le buffer Python pour voir les logs en temps réel
+        PYTHONUNBUFFERED = '1'
+    }
+
+    // Options globales 
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    // STAGES
+    stages {
+
+        // ──────────────────────────────────────────────────────────────────
+        // STAGE 1 : Checkout — récupération du code depuis GitHub
+        // ──────────────────────────────────────────────────────────────────
+        stage('Checkout') {
+            // Ce stage tourne sur l'agent Jenkins (pas encore dans Docker)
+            agent none
+            steps {
+                echo ' STAGE 1 : Récupération du code GitHub'
+
+                // Checkout automatique du repo configuré dans le job Jenkins
+                checkout scm
+
+                // Affiche le dernier commit pour traçabilité dans les logs
+                sh '''
+                    echo "Branche  : $(git rev-parse --abbrev-ref HEAD)"
+                    echo "Commit   : $(git rev-parse --short HEAD)"
+                    echo "Auteur   : $(git log -1 --format='%an <%ae>')"
+                    echo "Message  : $(git log -1 --format='%s')"
+                '''
+            }
+        }
+
+        // STAGE 2 : Build — construction de l'image Docker
+        stage('Build Docker Image') {
+            agent { label 'docker' }
+            steps {
+                echo ' STAGE 2 : Build de l\'image Docker'
+
+                script {
+                    sh """
+                        docker build \
+                            --tag ${IMAGE_NAME}:latest \
+                            --tag ${IMAGE_NAME}:${IMAGE_TAG} \
+                            --label "git-commit=\$(git rev-parse --short HEAD)" \
+                            --label "build-date=\$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                            .
+                    """
+                    sh "docker images ${IMAGE_NAME}:latest --format 'Taille image : {{.Size}}'"
+                }
+            }
+        }
+
+        // STAGE 3 : Lint — vérification de la qualité du code Python
+        stage('🔍 Lint (flake8)') {
+            steps {
+                echo ' STAGE 3 : Analyse qualité du code'
+
+                sh '''
+                    flake8 src/ tests/ main.py \
+                        --max-line-length=100 \
+                        --exclude=__pycache__,.git \
+                        --statistics \
+                        --count
+                '''
+            }
+            post {
+                failure {
+                    echo 'Des problèmes de style ont été détectés (voir logs ci-dessus).'
+                    unstable('Lint échoué — pipeline marqué UNSTABLE')
+                }
+            }
+        }
+
+        // STAGE 4 : Tests Unitaires
+        stage('Tests Unitaires') {
+            steps {
+                echo ' STAGE 4 : Exécution des tests unitaires'
+
+                sh '''
+                    python -m pytest tests/DataCleanerTest.py \
+                                    tests/TransactionProcessorTest.py \
+                        -v \
+                        --tb=short \
+                        --junitxml=reports/test-results.xml
+                '''
+            }
+            post {
+                always {
+                    junit 'reports/test-results.xml'
+                }
+                failure {
+                    echo 'Des tests ont échoué. Vérifiez le rapport ci-dessus.'
+                }
+                success {
+                    echo 'Tous les tests sont passés avec succès !'
+                }
+            }
+        }
+
+        // STAGE 5 : ETL Pipeline — exécution complète du traitement de données
+        stage('⚙️  ETL Pipeline') {
+            steps {
+                echo ' STAGE 5 : Exécution du pipeline ETL'
+
+                sh 'mkdir -p reports output logs'
+
+                sh 'python main.py'
+
+                sh '''
+                    if [ -f "${PARQUET_OUTPUT}" ]; then
+                        echo "Fichier Parquet généré : ${PARQUET_OUTPUT}"
+                        ls -lh "${PARQUET_OUTPUT}"
+                    else
+                        echo "Fichier Parquet introuvable : ${PARQUET_OUTPUT}"
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        // STAGE 6 : Archive — sauvegarde des artefacts dans Jenkins
+        stage('Archivage des Artefacts') {
+            steps {
+                echo ' STAGE 6 : Archivage des sorties'
+
+                archiveArtifacts artifacts: 'output/*.parquet, logs/*.log',
+                                fingerprint: true,
+                                allowEmptyArchive: false
+
+                echo 'Artefacts archivés : output/*.parquet + logs/*.log'
+            }
+        }
+    }
+
+    // POST — Actions exécutées après tous les stages
+    post {
+
+        // Toujours exécuté (succès ou échec)
+        always {
+            echo ' Nettoyage post-pipeline'
+            // Supprime l'image Docker intermédiaire pour libérer de l'espace
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            // Nettoyage de l'espace de travail Jenkins
+            cleanWs()
+        }
+
+        success {
+            echo """
+                PIPELINE RÉUSSI                 
+                Build #${env.BUILD_NUMBER}           
+                Branche : ${env.BRANCH_NAME}         
+            """
+        }
+
+        failure {
+            echo """
+                PIPELINE ÉCHOUÉ                
+                Build #${env.BUILD_NUMBER}         
+                Vérifiez les logs ci-dessus     
+            """
+            // envoyer un email de notification
+                mail to: 'laminettourre@gmail.com',
+                    subject: "Build #${env.BUILD_NUMBER} échoué",
+                    body: "Voir : ${env.BUILD_URL}"
+        }
+
+        unstable {
+            echo 'Pipeline terminé avec des avertissements (lint ou tests instables).'
+        }
+    }
+}
