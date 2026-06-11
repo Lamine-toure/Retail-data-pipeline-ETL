@@ -31,9 +31,7 @@ pipeline {
     // STAGES
     stages {
 
-        // ──────────────────────────────────────────────────────────────────
         // STAGE 1 : Checkout — récupération du code depuis GitHub
-        // ──────────────────────────────────────────────────────────────────
         stage('Checkout') {
             // Ce stage tourne sur l'agent Jenkins (pas encore dans Docker)
             agent none
