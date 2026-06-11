@@ -5,8 +5,5 @@ output/
 logs/
 reports/
 *.parquet
+.env
 .DS_Store
-.venv/
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/
-
