@@ -189,7 +189,7 @@ PAPER CRAFT, LITTLE BIRDIE   2 892.50 £
 
 ## 🧪 Tests unitaires
 
-**34 tests** couvrant toutes les méthodes de `DataCleaner` et `TransactionProcessor`.
+**4 tests** couvrant toutes les méthodes de `DataCleaner` et `TransactionProcessor`.
 
 ```bash
 # Lancer tous les tests
