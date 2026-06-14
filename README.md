@@ -200,22 +200,6 @@ python -m pytest tests/DataCleanerTest.py -v
 python -m pytest tests/TransactionProcessorTest.py -v
 ```
 
-### Couverture des tests
-
-| Classe | Méthode | Tests |
-|--------|---------|-------|
-| `DataCleaner` | `remove_duplicates` | 3 |
-| `DataCleaner` | `handle_missing_values` | 4 |
-| `DataCleaner` | `filter_valid_transactions` | 3 |
-| `DataCleaner` | `get_clean_df` / chaînage | 2 |
-| `TransactionProcessor` | `calculate_total_amount` | 3 |
-| `TransactionProcessor` | `group_by_country` | 4 |
-| `TransactionProcessor` | `aggregate_monthly_data` | 3 |
-| `TransactionProcessor` | `calcul_stat_data` | 5 |
-| `TransactionProcessor` | `aggregate_supplier_data` | 3 |
-| `TransactionProcessor` | `aggregate_world_data` | 4 |
-| **Total** | | **34 ✅** |
-
 ---
 
 ## 📊 Visualisations Jupyter
